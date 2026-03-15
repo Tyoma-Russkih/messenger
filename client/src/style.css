@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+@keyframes tg-shake {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  15% { transform: translate3d(-4px, 0, 0); }
+  30% { transform: translate3d(4px, 0, 0); }
+  45% { transform: translate3d(-3px, 0, 0); }
+  60% { transform: translate3d(3px, 0, 0); }
+  75% { transform: translate3d(-2px, 0, 0); }
+  90% { transform: translate3d(2px, 0, 0); }
+}
+
+.animate-tg-shake {
+  animation: tg-shake 0.22s cubic-bezier(.36,.07,.19,.97);
+}
+
+.shake-layer {
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  will-change: transform;
+}
