@@ -15,6 +15,14 @@
 				class="h-14 shrink-0 bg-white border-b px-4 flex items-center justify-between"
 			>
 				<div class="min-w-0 flex items-center gap-3">
+					<button
+						v-if="props.showMobileBack"
+						type="button"
+						class="md:hidden rounded-xl border px-2 py-1.5 text-sm hover:bg-gray-50"
+						@click="$emit('mobile-back')"
+					>
+						<ArrowLeft class="w-4 h-4" stroke-width="2" />
+					</button>
 					<div
 						class="w-10 h-10 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600 shrink-0"
 					>
@@ -131,13 +139,13 @@
 										<template v-if="m.type === 'IMAGE' && m.fileUrl">
 											<button
 												type="button"
-												class="block rounded-xl overflow-hidden bg-black/5"
+												class="block w-full max-w-full rounded-xl overflow-hidden bg-black/5"
 												@click="openImagePreview(m)"
 											>
 												<img
 													:src="fileUrl(m.fileUrl)"
 													:alt="m.fileName || 'image'"
-													class="block max-w-[260px] max-h-[260px] w-auto h-auto object-cover"
+													class="block w-full max-w-full max-h-[260px] object-cover"
 													loading="lazy"
 													@load="onImageLoad"
 													@error="
@@ -406,11 +414,11 @@ import {
 	Check,
 	CheckCheck,
 	ArrowDown,
+	ArrowLeft,
 	MoreHorizontal,
 	CornerUpLeft,
 	Pencil,
 	Trash2,
-	ImageIcon,
 	Paperclip,
 	File as FileIcon,
 } from 'lucide-vue-next'
@@ -419,6 +427,15 @@ import { useChatStore } from '../../stores/chat'
 import { useAuthStore } from '../../stores/auth'
 import { connectSocket, getSocket } from '../../realtime/socket'
 import UserProfileModal from '../profile/UserProfileModal.vue'
+
+const props = defineProps({
+	showMobileBack: {
+		type: Boolean,
+		default: false,
+	},
+})
+
+defineEmits(['mobile-back'])
 
 const store = useChatStore()
 const auth = useAuthStore()

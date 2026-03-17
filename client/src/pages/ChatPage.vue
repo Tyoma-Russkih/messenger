@@ -27,12 +27,21 @@
 			</header>
 
 			<div class="flex-1 min-h-0 flex">
-				<div class="w-80 shrink-0 border-r min-h-0">
+				<div
+					class="min-h-0 border-r w-full md:w-80 md:shrink-0"
+					:class="showSidebar ? 'block' : 'hidden'"
+				>
 					<ChatSidebar />
 				</div>
 
-				<div class="flex-1 min-h-0">
-					<ChatMain />
+				<div
+					class="flex-1 min-h-0 w-full"
+					:class="showChat ? 'block' : 'hidden'"
+				>
+					<ChatMain
+						:show-mobile-back="isMobileScreen && !!chatStore.activeChatId"
+						@mobile-back="goToChatList"
+					/>
 				</div>
 			</div>
 		</div>
@@ -41,7 +50,7 @@
 </template>
 
 <script setup>
-import { onMounted, onBeforeUnmount, watch, nextTick, ref } from 'vue'
+import { onMounted, onBeforeUnmount, watch, nextTick, ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 
 import ChatSidebar from '../components/chat/ChatSidebar.vue'
@@ -60,6 +69,16 @@ const route = useRoute()
 
 const isProfileOpen = ref(false)
 
+const isMobileScreen = ref(false)
+const mobileMediaQuery = ref(null)
+
+function syncMobileState(event) {
+	isMobileScreen.value = event.matches
+}
+
+const showSidebar = computed(() => !isMobileScreen.value || !chatStore.activeChatId)
+const showChat = computed(() => !isMobileScreen.value || !!chatStore.activeChatId)
+
 function joinActive() {
 	const s = getSocket()
 	if (!s) return
@@ -74,6 +93,9 @@ function leaveChat(id) {
 }
 
 onMounted(async () => {
+	mobileMediaQuery.value = window.matchMedia('(max-width: 767px)')
+	syncMobileState(mobileMediaQuery.value)
+	mobileMediaQuery.value.addEventListener('change', syncMobileState)
 	const s = connectSocket()
 	if (s) {
 		s.off('chat:updated')
@@ -145,20 +167,21 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+	mobileMediaQuery.value?.removeEventListener('change', syncMobileState)
 	disconnectSocket()
 })
 
 watch(
-  () => route.params.chatId,
-  (chatId) => {
-    if (!chatId) {
-      chatStore.setActiveChat(null)
-      return
-    }
+	() => route.params.chatId,
+	chatId => {
+		if (!chatId) {
+			chatStore.setActiveChat(null)
+			return
+		}
 
-    const exists = chatStore.chats.some(c => c.id === chatId)
-    chatStore.setActiveChat(exists ? chatId : null)
-  }
+		const exists = chatStore.chats.some(c => c.id === chatId)
+		chatStore.setActiveChat(exists ? chatId : null)
+	},
 )
 
 watch(
@@ -174,5 +197,10 @@ function logout() {
 	disconnectSocket()
 	auth.logout()
 	router.replace('/login')
+}
+
+function goToChatList() {
+	chatStore.setActiveChat(null)
+	router.push('/chat')
 }
 </script>
