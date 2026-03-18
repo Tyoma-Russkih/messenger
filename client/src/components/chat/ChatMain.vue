@@ -481,6 +481,7 @@ const MENU_HEIGHT = 112
 
 let typingTimer = null
 let typingSent = false
+let stickToBottomUntil = 0
 
 const isEditChanged = computed(() => {
 	if (!editingMessage.value) return true
@@ -643,6 +644,7 @@ async function onPickFile(e) {
 			messages.value.push(data.message)
 		}
 
+		requestStickToBottom()
 		await scrollToBottom(true)
 		store.loadChats()
 	} catch (e2) {
@@ -661,7 +663,7 @@ function formatFileSize(size) {
 }
 
 function onImageLoad() {
-	if (isAtBottom.value) {
+	if (isAtBottom.value || Date.now() < stickToBottomUntil) {
 		scrollToBottom(false)
 	}
 }
@@ -889,11 +891,25 @@ function onScroll() {
 	}
 }
 
+function pinBottomAfterLayout() {
+	const el = messagesEl.value
+	if (!el) return
+	el.scrollTop = el.scrollHeight
+	updateIsAtBottom()
+}
+
+function requestStickToBottom(ms = 1200) {
+	stickToBottomUntil = Date.now() + ms
+}
+
 async function scrollToBottom(smooth) {
 	await nextTick()
 	const anchor = bottomAnchor.value
 	if (!anchor) return
 	anchor.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'end' })
+	pinBottomAfterLayout()
+	requestAnimationFrame(() => pinBottomAfterLayout())
+	setTimeout(pinBottomAfterLayout, smooth ? 220 : 0)
 	newMessagesCount.value = 0
 	if (messages.value.length) {
 		const lastId = messages.value[messages.value.length - 1].id
@@ -1046,6 +1062,22 @@ watch(
 
 // realtime
 let socket = null
+let scrollElement = null
+
+function attachScrollListener(el) {
+	if (!el || scrollElement === el) return
+	if (scrollElement) {
+		scrollElement.removeEventListener('scroll', onScroll)
+	}
+	el.addEventListener('scroll', onScroll, { passive: true })
+	scrollElement = el
+}
+
+function detachScrollListener() {
+	if (!scrollElement) return
+	scrollElement.removeEventListener('scroll', onScroll)
+	scrollElement = null
+}
 
 function onNewMessage(payload) {
 	const msg = payload?.message
@@ -1071,10 +1103,8 @@ function onNewMessage(payload) {
 }
 
 onMounted(() => {
-	const el = messagesEl.value
-	if (el) el.addEventListener('scroll', onScroll, { passive: true })
+	attachScrollListener(messagesEl.value)
 
-	window.addEventListener('click', handleWindowClick)
 	window.addEventListener('click', handleWindowClick)
 	window.addEventListener('resize', closeMessageMenu)
 	window.addEventListener('scroll', closeMessageMenu, true)
@@ -1096,11 +1126,13 @@ onMounted(() => {
 	socket.on('message:deleted', onMessageDeleted)
 })
 
-onBeforeUnmount(() => {
-	const el = messagesEl.value
-	if (el) el.removeEventListener('scroll', onScroll)
+watch(messagesEl, el => {
+	attachScrollListener(el)
+})
 
-	window.addEventListener('click', handleWindowClick)
+onBeforeUnmount(() => {
+	detachScrollListener()
+
 	window.removeEventListener('click', handleWindowClick)
 	window.removeEventListener('resize', closeMessageMenu)
 	window.removeEventListener('scroll', closeMessageMenu, true)
@@ -1167,6 +1199,7 @@ async function send() {
 			messages.value.push(data.message)
 		}
 
+		requestStickToBottom()
 		await scrollToBottom(true)
 		store.loadChats()
 	} catch (e) {
